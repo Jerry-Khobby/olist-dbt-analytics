@@ -1,0 +1,91 @@
+# Olist analytics stack: Postgres -> ETL (load raw CSVs) -> dbt (transform) -> Streamlit (dashboard)
+# Values like ${POSTGRES_USER} are read from .env (copy .env.example to start).
+
+x-db-env: &db-env
+  POSTGRES_HOST: postgres
+  POSTGRES_PORT: 5432
+  POSTGRES_USER: ${POSTGRES_USER}
+  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+  POSTGRES_DB: ${POSTGRES_DB}
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: olist-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "${POSTGRES_HOST_PORT:-5432}:5432"
+    healthcheck:
+      # Over TCP: the image's temporary init server only listens on a Unix socket, so a
+      # socket check reports healthy before the real server has started.
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - olist-net
+    restart: unless-stopped
+
+  # One-shot job: loads the raw Kaggle CSVs into the `raw` schema, then exits.
+  etl:
+    build:
+      context: .
+      dockerfile: docker/etl/Dockerfile
+    container_name: olist-etl
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      <<: *db-env
+      RAW_DATA_DIR: /data
+    volumes:
+      - ./data:/data:ro
+    networks:
+      - olist-net
+
+  # One-shot job: runs `dbt deps && dbt build` once the raw data is loaded.
+  dbt:
+    build:
+      context: .
+      dockerfile: docker/dbt/Dockerfile
+    container_name: olist-dbt
+    depends_on:
+      etl:
+        condition: service_completed_successfully
+    environment:
+      <<: *db-env
+    volumes:
+      # Live-mount the project so model edits don't need an image rebuild
+      - ./dbt:/usr/app/dbt
+    networks:
+      - olist-net
+
+  streamlit:
+    build:
+      context: .
+      dockerfile: docker/streamlit/Dockerfile
+    container_name: olist-streamlit
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      <<: *db-env
+    volumes:
+      - ./streamlit:/app
+    ports:
+      - "8501:8501"
+    networks:
+      - olist-net
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+
+networks:
+  olist-net:

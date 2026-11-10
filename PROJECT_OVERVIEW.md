@@ -184,35 +184,48 @@ These are real problems in the dataset, and each teaches a dbt skill.
 ## 8. Folder Structure
 
 ```
-olist_dbt/
-├── dbt_project.yml
-├── profiles.yml              # connection config (keep out of Git)
-├── seeds/
-├── models/
-│   ├── staging/
-│   │   ├── _sources.yml
-│   │   ├── _staging.yml
-│   │   ├── stg_orders.sql
-│   │   ├── stg_customers.sql
-│   │   ├── stg_order_items.sql
-│   │   ├── stg_payments.sql
-│   │   ├── stg_reviews.sql
-│   │   ├── stg_products.sql
-│   │   └── stg_sellers.sql
-│   ├── intermediate/
-│   │   ├── int_order_payments_agg.sql
-│   │   └── int_order_reviews_dedup.sql
-│   └── marts/
-│       ├── dim_customers.sql
-│       ├── dim_products.sql
-│       ├── dim_sellers.sql
-│       ├── fct_orders.sql
-│       ├── monthly_revenue.sql
-│       ├── delivery_delay_by_state.sql
-│       └── top_sellers.sql
-├── macros/
-├── tests/
-└── README.md
+olist-dbt-analytics/
+├── docker-compose.yml        # postgres -> etl -> dbt, plus streamlit
+├── .env.example              # copy to .env (gitignored) and set credentials
+├── docker/                   # one Dockerfile per service
+│   ├── dbt/Dockerfile
+│   ├── etl/Dockerfile
+│   └── streamlit/Dockerfile
+├── data/                     # raw Kaggle CSVs (gitignored)
+├── docs/                     # images for the README
+├── etl/
+│   └── main.py               # loads CSVs into the `raw` schema
+├── streamlit/
+│   └── app.py                # dashboard on top of the marts
+└── dbt/                      # the dbt project
+    ├── dbt_project.yml
+    ├── profiles.yml          # reads credentials from env vars, safe to commit
+    ├── seeds/
+    ├── analyses/
+    ├── macros/
+    ├── tests/
+    └── models/
+        ├── staging/
+        │   ├── _sources.yml
+        │   ├── _staging.yml
+        │   ├── stg_orders.sql
+        │   ├── stg_customers.sql
+        │   ├── stg_order_items.sql
+        │   ├── stg_payments.sql
+        │   ├── stg_reviews.sql
+        │   ├── stg_products.sql
+        │   └── stg_sellers.sql
+        ├── intermediate/
+        │   ├── int_order_payments_agg.sql
+        │   └── int_order_reviews_dedup.sql
+        └── marts/
+            ├── dim_customers.sql
+            ├── dim_products.sql
+            ├── dim_sellers.sql
+            ├── fct_orders.sql
+            ├── monthly_revenue.sql
+            ├── delivery_delay_by_state.sql
+            └── top_sellers.sql
 ```
 
 ---

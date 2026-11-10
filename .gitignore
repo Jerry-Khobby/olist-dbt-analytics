@@ -1,1 +1,15 @@
-data 
+# Raw Kaggle data (download locally, never commit)
+data/
+
+# Secrets
+.env
+
+# dbt artifacts
+dbt/target/
+dbt/logs/
+dbt/dbt_packages/
+
+# Python
+__pycache__/
+*.pyc
+.venv/

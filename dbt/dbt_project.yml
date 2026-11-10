@@ -1,0 +1,27 @@
+name: olist
+version: "1.0.0"
+config-version: 2
+
+# Must match the profile name in profiles.yml
+profile: olist
+
+model-paths: ["models"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
+test-paths: ["tests"]
+analysis-paths: ["analyses"]
+
+target-path: target
+clean-targets: ["target", "dbt_packages"]
+
+models:
+  olist:
+    staging:
+      +schema: staging
+      +materialized: view
+    intermediate:
+      +schema: intermediate
+      +materialized: view
+    marts:
+      +schema: marts
+      +materialized: table

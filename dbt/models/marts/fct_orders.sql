@@ -30,9 +30,9 @@ select
     rv.review_score,
 
     -- delivery metrics (NULL when the order was never delivered)
-    o.delivered_at::date - o.purchased_at::date          as days_to_deliver,
-    o.delivered_at::date - o.estimated_delivery_at::date as days_late,  -- negative = early
-    o.delivered_at::date > o.estimated_delivery_at::date as is_late
+    {{ delivery_days('o.purchased_at', 'o.delivered_at') }}          as days_to_deliver,
+    {{ delivery_days('o.estimated_delivery_at', 'o.delivered_at') }} as days_late,  -- negative = early
+    {{ delivery_days('o.estimated_delivery_at', 'o.delivered_at') }} > 0 as is_late
 
 from {{ ref('stg_orders') }} as o
 left join {{ ref('stg_customers') }}           as c  on o.customer_id = c.customer_id

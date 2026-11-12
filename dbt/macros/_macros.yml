@@ -1,0 +1,19 @@
+version: 2
+
+macros:
+  - name: delivery_days
+    description: >
+      Whole days between two timestamps (end minus start), as an integer.
+      NULL when either timestamp is NULL. Negative when end is before start.
+    arguments:
+      - name: start_column
+        type: string
+        description: SQL expression for the earlier timestamp, e.g. 'o.purchased_at'.
+      - name: end_column
+        type: string
+        description: SQL expression for the later timestamp, e.g. 'o.delivered_at'.
+
+  - name: generate_schema_name
+    description: >
+      Overrides dbt's default schema naming so custom schemas are used as-is
+      (staging, intermediate, marts) instead of being prefixed (analytics_staging).

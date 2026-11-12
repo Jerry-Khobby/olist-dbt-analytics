@@ -253,16 +253,16 @@ dbt docs serve
 
 ## 10. Learning Checklist
 
-- [ ] Declare sources and use `source()` and `ref()`
-- [ ] Build staging, intermediate, and marts layers
-- [ ] Write generic tests in YAML
-- [ ] Write one custom singular test
-- [ ] Write one macro (for example `delivery_days(start, end)`)
-- [ ] Build one incremental model
-- [ ] Use Jinja `{% if %}` or `{% for %}` in a model
-- [ ] Add column descriptions and generate docs
-- [ ] Screenshot the lineage graph for the README
-- [ ] Push to GitHub with a README that includes two or three business insights
+- [x] Declare sources and use `source()` and `ref()`
+- [x] Build staging, intermediate, and marts layers
+- [x] Write generic tests in YAML
+- [x] Write one custom singular test
+- [x] Write one macro (for example `delivery_days(start, end)`)
+- [x] Build one incremental model
+- [x] Use Jinja `{% if %}` or `{% for %}` in a model
+- [x] Add column descriptions and generate docs
+- [ ] Screenshot the lineage graph for the README (a Mermaid lineage diagram is in the README; add a `dbt docs` screenshot to `docs/`)
+- [x] Push to GitHub with a README that includes two or three business insights
 
 ---
 

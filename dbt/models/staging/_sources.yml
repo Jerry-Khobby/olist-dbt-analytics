@@ -1,14 +1,72 @@
-version: 2 
+version: 2
 
-sources: 
-  - name: olist_raw 
-    schema: raw 
-    tables: 
-      - name: orders 
+sources:
+  - name: olist_raw
+    description: >
+      Raw Olist e-commerce data, loaded untouched from the Kaggle CSVs by the ETL
+      job (etl/main.py). Every column is TEXT; casting happens in staging models.
+    schema: raw
+    tables:
+      - name: orders
+        description: One row per order, with status and purchase/approval/delivery timestamps.
+        columns:
+          - name: order_id
+            tests: [unique, not_null]
+
       - name: customers
-      - name: order_items 
-      - name: order_payments 
-      - name: order_reviews  
-      - name: products 
-      - name: sellers 
-      
+        description: >
+          One row per customer_id. Note customer_id is unique per order, not per person;
+          customer_unique_id identifies the real customer.
+        columns:
+          - name: customer_id
+            tests: [unique, not_null]
+
+      - name: order_items
+        description: >
+          One row per item in an order. The key is (order_id, order_item_id);
+          an order with 3 items has order_item_id 1, 2 and 3.
+        columns:
+          - name: order_id
+            tests: [not_null]
+          - name: order_item_id
+            tests: [not_null]
+
+      - name: order_payments
+        description: >
+          One row per payment for an order. The key is (order_id, payment_sequential);
+          an order paid with a voucher and a card has two rows.
+        columns:
+          - name: order_id
+            tests: [not_null]
+          - name: payment_sequential
+            tests: [not_null]
+
+      - name: order_reviews
+        description: >
+          Customer reviews of orders. review_id is NOT unique in the raw data (814 duplicates)
+          and some orders have several reviews; deduplicate in the intermediate layer.
+        columns:
+          - name: review_id
+            tests: [not_null]
+          - name: order_id
+            tests: [not_null]
+
+      - name: products
+        description: >
+          One row per product, with a Portuguese category name and dimensions.
+          Some column names are misspelled in the source (product_name_lenght).
+        columns:
+          - name: product_id
+            tests: [unique, not_null]
+
+      - name: sellers
+        description: One row per seller, with location.
+        columns:
+          - name: seller_id
+            tests: [unique, not_null]
+
+      - name: product_category_name_translation
+        description: Maps Portuguese product category names to English.
+        columns:
+          - name: product_category_name
+            tests: [unique, not_null]

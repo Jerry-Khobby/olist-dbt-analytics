@@ -1,0 +1,60 @@
+version: 2
+
+# Each intermediate model changes the grain to ONE ROW PER ORDER, so the key
+# test here is that order_id is now unique (it wasn't in the staging models).
+
+models:
+  - name: int_order_payments_agg
+    description: Payments rolled up to one row per order.
+    columns:
+      - name: order_id
+        data_tests:
+          - unique
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_orders')
+                field: order_id
+      - name: total_paid
+        description: Sum of all payments for the order, across payment methods.
+        data_tests: [not_null]
+      - name: payment_count
+        data_tests: [not_null]
+
+  - name: int_order_items_agg
+    description: Order items rolled up to one row per order. 775 orders have no items.
+    columns:
+      - name: order_id
+        data_tests:
+          - unique
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_orders')
+                field: order_id
+      - name: item_count
+        data_tests: [not_null]
+      - name: order_total
+        description: items_total + freight_total. Should roughly equal int_order_payments_agg.total_paid.
+        data_tests: [not_null]
+
+  - name: int_order_reviews_dedup
+    description: >
+      The latest review per order (by answer time, then creation time).
+      Removes the duplicate reviews present in stg_reviews.
+    columns:
+      - name: order_id
+        data_tests:
+          - unique
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_orders')
+                field: order_id
+      - name: review_score
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [1, 2, 3, 4, 5]
+                quote: false

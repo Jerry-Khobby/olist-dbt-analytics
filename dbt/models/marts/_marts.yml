@@ -1,0 +1,128 @@
+version: 2
+
+models:
+  - name: dim_products
+    description: One row per product, with an English category name.
+    columns:
+      - name: product_id
+        description: Primary key.
+        data_tests: [unique, not_null]
+      - name: category_name
+        description: >
+          English category name. Falls back to the Portuguese name when there is no
+          translation, and to 'unknown' when the product has no category.
+        data_tests: [not_null]
+      - name: category_name_pt
+        description: Original Portuguese category name from the source. Null for 610 products.
+
+  - name: fct_orders
+    description: >
+      One row per order, with customer, money, review and delivery metrics.
+      The central fact table that the reporting marts build on.
+    columns:
+      - name: order_id
+        description: Primary key.
+        data_tests: [unique, not_null]
+      - name: customer_id
+        data_tests: [not_null]
+      - name: customer_unique_id
+        description: The real customer (a person can have several customer_ids).
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_customers')
+                field: customer_unique_id
+      - name: customer_state
+        description: State of the delivery address used for this order.
+        data_tests: [not_null]
+      - name: order_status
+        data_tests: [not_null]
+      - name: order_total
+        description: Item prices + freight. Null for the 775 orders with no items.
+      - name: total_paid
+        description: Sum of all payments. Null for the 1 order with no payment.
+      - name: days_to_deliver
+        description: Days from purchase to delivery. Null if not delivered.
+      - name: days_late
+        description: Days delivered after the estimate (negative = early). Null if not delivered.
+      - name: is_late
+        description: True when delivered after the estimated date. Null if not delivered.
+
+  # ---------------------------------------------------------------- dimensions
+
+  - name: dim_sellers
+    description: One row per seller, with location.
+    columns:
+      - name: seller_id
+        description: Primary key.
+        data_tests: [unique, not_null]
+
+  - name: dim_customers
+    description: >
+      One row per real customer (customer_unique_id). Address is taken from the
+      customer's most recent order. Includes lifetime order stats.
+    columns:
+      - name: customer_unique_id
+        description: Primary key.
+        data_tests: [unique, not_null]
+      - name: total_orders
+        description: Number of orders placed, all statuses.
+        data_tests: [not_null]
+      - name: is_repeat_customer
+        description: True when the customer placed more than one order.
+        data_tests: [not_null]
+
+  # --------------------------------------------------------- reporting marts
+
+  - name: monthly_revenue
+    description: >
+      Revenue per purchase month, excluding canceled and unavailable orders,
+      with month-over-month growth. First and last months are partial.
+    columns:
+      - name: month
+        description: First day of the month. Primary key.
+        data_tests: [unique, not_null]
+      - name: revenue
+        description: Sum of payments for the month's orders.
+        data_tests: [not_null]
+      - name: revenue_growth_pct
+        description: Percentage change vs the previous month. Null for the first month.
+
+  - name: delivery_delay_by_state
+    description: Late-delivery rate and average delays per customer state, delivered orders only.
+    columns:
+      - name: customer_state
+        description: Primary key.
+        data_tests: [unique, not_null]
+      - name: late_pct
+        description: Share of delivered orders that arrived after the estimated date.
+        data_tests: [not_null]
+      - name: avg_days_late_when_late
+        description: Average days late, counting only orders that were late.
+
+  - name: top_sellers
+    description: >
+      One row per seller with revenue (from order items) and average review score,
+      ranked on both. Excludes canceled and unavailable orders.
+    columns:
+      - name: seller_id
+        description: Primary key.
+        data_tests:
+          - unique
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_sellers')
+                field: seller_id
+      - name: revenue_rank
+        description: 1 = highest revenue.
+        data_tests: [not_null]
+      - name: review_rank
+        description: 1 = best average review. Null for sellers with fewer than 10 reviewed orders.
+
+  - name: customer_repeat_rate
+    description: Single-row summary of how many customers ordered more than once.
+    columns:
+      - name: repeat_rate_pct
+        data_tests: [not_null]

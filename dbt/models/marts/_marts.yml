@@ -49,6 +49,39 @@ models:
       - name: is_late
         description: True when delivered after the estimated date. Null if not delivered.
 
+  - name: fct_order_items
+    description: >
+      One row per item sold. INCREMENTAL: later runs only re-process orders from the
+      last few days (var incremental_lookback_days) and merge them in with delete+insert.
+      Rebuild everything with `dbt run --full-refresh --select fct_order_items`.
+    columns:
+      - name: order_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('fct_orders')
+                field: order_id
+      - name: order_item_id
+        data_tests: [not_null]
+      - name: product_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_products')
+                field: product_id
+      - name: seller_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_sellers')
+                field: seller_id
+      - name: item_total
+        description: price + freight_value for this item.
+        data_tests: [not_null]
+
   # ---------------------------------------------------------------- dimensions
 
   - name: dim_sellers

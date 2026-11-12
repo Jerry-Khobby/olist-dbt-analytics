@@ -1,0 +1,134 @@
+version: 2
+
+models:
+  - name: stg_orders
+    description: One row per order, with typed timestamps.
+    columns:
+      - name: order_id
+        description: Primary key.
+        data_tests: [unique, not_null]
+      - name: customer_id
+        description: The per-order customer id (see stg_customers).
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_customers')
+                field: customer_id
+      - name: order_status
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [delivered, shipped, canceled, unavailable, invoiced, processing, created, approved]
+      - name: purchased_at
+        data_tests: [not_null]
+      - name: delivered_at
+        description: Null for orders that were never delivered.
+
+  - name: stg_customers
+    description: One row per customer_id. customer_id is unique per order; customer_unique_id is the real person.
+    columns:
+      - name: customer_id
+        description: Primary key.
+        data_tests: [unique, not_null]
+      - name: customer_unique_id
+        description: Identifies the actual customer across orders. Not unique in this table.
+        data_tests: [not_null]
+
+  - name: stg_order_items
+    description: One row per item in an order. Grain is (order_id, order_item_id).
+    columns:
+      - name: order_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_orders')
+                field: order_id
+      - name: order_item_id
+        description: Item number within the order (1, 2, 3, ...).
+        data_tests: [not_null]
+      - name: product_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_products')
+                field: product_id
+      - name: seller_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_sellers')
+                field: seller_id
+      - name: price
+        data_tests: [not_null]
+      - name: freight_value
+        data_tests: [not_null]
+
+  - name: stg_payments
+    description: One row per payment. Grain is (order_id, payment_sequential); an order can have several payments.
+    columns:
+      - name: order_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_orders')
+                field: order_id
+      - name: payment_sequential
+        data_tests: [not_null]
+      - name: payment_type
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [credit_card, boleto, voucher, debit_card, not_defined]
+      - name: payment_value
+        data_tests: [not_null]
+
+  - name: stg_reviews
+    description: >
+      Customer reviews, NOT deduplicated. review_id repeats (814 duplicates) and some
+      orders have several reviews; keep the latest per order in the intermediate layer.
+    columns:
+      - name: review_id
+        data_tests: [not_null]
+      - name: order_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_orders')
+                field: order_id
+      - name: review_score
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [1, 2, 3, 4, 5]
+                quote: false
+
+  - name: stg_products
+    description: One row per product. Misspelled source columns are renamed (lenght -> length).
+    columns:
+      - name: product_id
+        description: Primary key.
+        data_tests: [unique, not_null]
+      - name: product_category_name
+        description: Portuguese category name. Null for 610 products.
+
+  - name: stg_sellers
+    description: One row per seller.
+    columns:
+      - name: seller_id
+        description: Primary key.
+        data_tests: [unique, not_null]
+
+  - name: stg_product_category_translation
+    description: Maps Portuguese category names to English. 2 categories used by products have no translation.
+    columns:
+      - name: product_category_name
+        description: Primary key.
+        data_tests: [unique, not_null]

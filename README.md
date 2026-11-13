@@ -2,7 +2,9 @@
 
 An end-to-end analytics engineering project on real Brazilian e-commerce data: raw CSVs are loaded into **PostgreSQL**, modelled and tested with **dbt**, and explored in a **Streamlit** dashboard. The whole stack runs with Docker Compose.
 
-> **Status:** ETL and dbt models are complete (20 models, 110 tests). The Streamlit dashboard is in progress.
+> **Status:** Complete. ETL, 20 dbt models with 110 tests, and a Streamlit dashboard.
+
+![Olist analytics dashboard: revenue tab](docs/dashboard-revenue.png)
 
 ## Key insights
 
@@ -24,6 +26,30 @@ Olist is a marketplace that connects small sellers to large online storefronts. 
 | Which regions receive orders late, and by how many days? | `delivery_delay_by_state` |
 | Who are the best and worst sellers by revenue and review score? | `top_sellers` |
 | How many customers buy more than once? | `customer_repeat_rate` |
+
+## Dashboard
+
+The Streamlit app ([streamlit/app.py](streamlit/app.py)) runs at <http://localhost:8501>. It reads **only the dbt marts**: all business logic lives in dbt, and the app just queries the finished tables and draws them. Query results are cached for 10 minutes.
+
+| Tab | What it shows | Built on |
+|---|---|---|
+| 📈 Revenue | Monthly revenue, orders or average order value; top categories by revenue | `monthly_revenue`, `fct_order_items`, `dim_products` |
+| 🚚 Delivery | Late-delivery rate per state against the national average; reviews for late vs on-time orders | `delivery_delay_by_state`, `fct_orders` |
+| 🏪 Sellers | Top and bottom sellers by revenue or review score; revenue vs review scatter | `top_sellers` |
+| 👥 Customers | Repeat rate, orders-per-customer distribution, customers by state | `customer_repeat_rate`, `dim_customers` |
+
+Headline KPIs (revenue, orders, average review, late %, repeat rate) sit above the tabs.
+
+<table>
+  <tr>
+    <td><img src="docs/dashboard-delivery.png" alt="Delivery tab: late-delivery rate by state and review scores for late vs on-time orders"></td>
+    <td><img src="docs/dashboard-sellers.png" alt="Sellers tab: top and bottom sellers and a revenue vs review score scatter"></td>
+  </tr>
+  <tr>
+    <td align="center"><b>Delivery:</b> Alagoas is late 3x the national rate, and late orders score 2.27★ vs 4.29★</td>
+    <td align="center"><b>Sellers:</b> revenue and review score are barely related</td>
+  </tr>
+</table>
 
 ## Architecture
 
@@ -154,6 +180,8 @@ flowchart LR
 
 4. Open the dashboard at <http://localhost:8501>. Postgres is available on `localhost:5432` (or `POSTGRES_HOST_PORT` from `.env`).
 
+   `./streamlit` is mounted into the container, so edits to `app.py` show up on refresh without a rebuild.
+
 ### Useful commands
 
 ```bash
@@ -191,12 +219,12 @@ docker exec -it olist-postgres psql -U olist -d olist
 │       ├── staging/     # 1:1 cleaned views of the raw tables
 │       ├── intermediate/# one-row-per-order rollups
 │       └── marts/       # facts, dimensions and reporting tables
-└── streamlit/           # dashboard app
+└── streamlit/app.py     # dashboard (reads the marts only)
 ```
 
 ## Tech stack
 
-PostgreSQL 15 · dbt Core 1.12 (`dbt-postgres`) · Python (psycopg2) · Streamlit · Docker Compose
+PostgreSQL 15 · dbt Core 1.12 (`dbt-postgres`) · Python (psycopg2) · Streamlit + Plotly · Docker Compose
 
 ## Learn more
 

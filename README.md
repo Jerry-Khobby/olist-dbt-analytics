@@ -67,7 +67,11 @@ Headline KPIs (revenue, orders, average review, late %, repeat rate) sit above t
 
 ## dbt lineage
 
-Generated from dbt's `manifest.json`:
+The lineage graph from `dbt docs` (green = raw sources, blue = models and singular tests):
+
+![dbt docs lineage graph](docs/lineage.png)
+
+The same graph for models only, generated from dbt's `manifest.json`:
 
 ```mermaid
 flowchart LR

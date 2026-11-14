@@ -261,7 +261,7 @@ dbt docs serve
 - [x] Build one incremental model
 - [x] Use Jinja `{% if %}` or `{% for %}` in a model
 - [x] Add column descriptions and generate docs
-- [ ] Screenshot the lineage graph for the README (a Mermaid lineage diagram is in the README; add a `dbt docs` screenshot to `docs/`)
+- [x] Screenshot the lineage graph for the README
 - [x] Push to GitHub with a README that includes two or three business insights
 
 ---

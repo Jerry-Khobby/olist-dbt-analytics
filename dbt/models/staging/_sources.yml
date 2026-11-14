@@ -11,7 +11,7 @@ sources:
         description: One row per order, with status and purchase/approval/delivery timestamps.
         columns:
           - name: order_id
-            tests: [unique, not_null]
+            data_tests: [unique, not_null]
 
       - name: customers
         description: >
@@ -19,7 +19,7 @@ sources:
           customer_unique_id identifies the real customer.
         columns:
           - name: customer_id
-            tests: [unique, not_null]
+            data_tests: [unique, not_null]
 
       - name: order_items
         description: >
@@ -27,9 +27,9 @@ sources:
           an order with 3 items has order_item_id 1, 2 and 3.
         columns:
           - name: order_id
-            tests: [not_null]
+            data_tests: [not_null]
           - name: order_item_id
-            tests: [not_null]
+            data_tests: [not_null]
 
       - name: order_payments
         description: >
@@ -37,9 +37,9 @@ sources:
           an order paid with a voucher and a card has two rows.
         columns:
           - name: order_id
-            tests: [not_null]
+            data_tests: [not_null]
           - name: payment_sequential
-            tests: [not_null]
+            data_tests: [not_null]
 
       - name: order_reviews
         description: >
@@ -47,9 +47,9 @@ sources:
           and some orders have several reviews; deduplicate in the intermediate layer.
         columns:
           - name: review_id
-            tests: [not_null]
+            data_tests: [not_null]
           - name: order_id
-            tests: [not_null]
+            data_tests: [not_null]
 
       - name: products
         description: >
@@ -57,16 +57,16 @@ sources:
           Some column names are misspelled in the source (product_name_lenght).
         columns:
           - name: product_id
-            tests: [unique, not_null]
+            data_tests: [unique, not_null]
 
       - name: sellers
         description: One row per seller, with location.
         columns:
           - name: seller_id
-            tests: [unique, not_null]
+            data_tests: [unique, not_null]
 
       - name: product_category_name_translation
         description: Maps Portuguese product category names to English.
         columns:
           - name: product_category_name
-            tests: [unique, not_null]
+            data_tests: [unique, not_null]

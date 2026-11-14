@@ -27,9 +27,11 @@ A learning project that turns raw Brazilian e-commerce data into tested, documen
 
 | Component | Tool |
 |---|---|
-| Transformation | dbt Core |
-| Warehouse | PostgreSQL (or DuckDB for zero setup) |
-| Adapter | `dbt-postgres` |
+| Extract + Load | Python (`psycopg2`, Postgres `COPY`) |
+| Warehouse | PostgreSQL 15 |
+| Transformation | dbt Core 1.12 with the `dbt-postgres` adapter |
+| Dashboard | Streamlit + Plotly |
+| Runtime | Docker Compose |
 | Version control | Git / GitHub |
 | Docs and lineage | `dbt docs` |
 
@@ -39,12 +41,12 @@ A learning project that turns raw Brazilian e-commerce data into tested, documen
 
 Traditional ETL is **Extract, Transform, Load**: data is transformed before it reaches the warehouse. Modern cloud warehouses are powerful enough to transform data in place, so most teams now use **ELT**: Extract, Load, then Transform.
 
-```
+```text
  Sources              Extract + Load              Transform (dbt)               Consume
 ┌──────────┐        ┌───────────────┐        ┌──────────────────────┐        ┌────────────┐
-│ Olist    │        │ Raw tables in │        │ staging              │        │ BI tools   │
-│ CSVs     │  --->  │ PostgreSQL    │  --->  │   -> intermediate    │  --->  │ Metabase   │
-│          │        │ (untouched)   │        │     -> marts         │        │ Grafana    │
+│ Olist    │        │ Raw tables in │        │ staging              │        │ Streamlit  │
+│ CSVs     │  --->  │ PostgreSQL    │  --->  │   -> intermediate    │  --->  │ dashboard  │
+│          │        │ (untouched)   │        │     -> marts         │        │            │
 └──────────┘        └───────────────┘        └──────────────────────┘        └────────────┘
      E + L (not dbt)                              T  <-- dbt lives here
 ```
@@ -53,8 +55,9 @@ Traditional ETL is **Extract, Transform, Load**: data is transformed before it r
 
 In this project:
 
-- **Extract + Load:** done manually by loading the CSVs into a `raw` schema in Postgres (using `dbt seed`, `COPY`, or a Python script).
+- **Extract + Load:** a Python job (`etl/`) loads each CSV into the `raw` schema with Postgres `COPY`. Every column lands as `TEXT`, untouched; typing happens in dbt staging. It is idempotent: a SHA-256 hash of each file is logged in `etl_meta.ingestion_log`, and unchanged files are skipped on the next run.
 - **Transform:** everything after that is dbt.
+- **Consume:** a Streamlit dashboard that reads only the marts.
 
 ---
 
@@ -168,22 +171,33 @@ These are real problems in the dataset, and each teaches a dbt skill.
 
 ## 7. Tests
 
+110 tests run on every `dbt build`.
+
 **Generic (YAML):**
-- `unique` and `not_null` on every primary key
-- `relationships` from `fct_orders.customer_id` to `dim_customers`
-- `accepted_values` on `order_status`
 
-**Custom singular test:**
-- For each order, payment total should equal item price plus freight. Failures are expected for a small number of orders and are worth investigating.
+- `unique` and `not_null` on every primary key, in sources, staging and marts
+- `accepted_values` on `order_status`, `payment_type` and `review_score`
+- `relationships` between models, e.g. `fct_orders.customer_unique_id` to `dim_customers`, and `fct_order_items` to `dim_products`, `dim_sellers` and `fct_orders`
 
-**Bonus:**
-- Source freshness checks and row-count comparisons between layers.
+**Singular (SQL in `dbt/tests/`, each returns the failing rows):**
+
+| Test | Checks that |
+|---|---|
+| `assert_payments_agg_matches_staging_total` | rolling payments up to one row per order loses no money |
+| `assert_payment_type_amounts_add_up` | the per-type payment columns sum to the order total |
+| `assert_items_agg_matches_staging_totals` | rolling items up loses no items, price or freight |
+| `assert_reviews_dedup_keeps_every_order` | deduplicating reviews drops no order |
+| `assert_fct_orders_has_one_row_per_order` | `fct_orders` has exactly one row per order in `stg_orders` |
+| `assert_fct_order_items_has_no_duplicates` | the incremental model never duplicates an item |
+| `assert_dim_customers_covers_every_customer` | every real customer appears in `dim_customers` |
+| `assert_monthly_revenue_matches_fct_orders` | the monthly report adds up to the fact table |
+| `assert_payment_matches_order_total` | payments equal item prices + freight (**warns** only: 303 orders differ, mostly installment interest) |
 
 ---
 
 ## 8. Folder Structure
 
-```
+```text
 olist-dbt-analytics/
 ├── docker-compose.yml        # postgres -> etl -> dbt, plus streamlit
 ├── .env.example              # copy to .env (gitignored) and set credentials
@@ -192,20 +206,21 @@ olist-dbt-analytics/
 │   ├── etl/Dockerfile
 │   └── streamlit/Dockerfile
 ├── data/                     # raw Kaggle CSVs (gitignored)
-├── docs/                     # images for the README
-├── etl/
-│   └── main.py               # loads CSVs into the `raw` schema
+├── docs/                     # screenshots and diagrams for the README
+├── etl/                      # loads CSVs into the `raw` schema
+│   ├── main.py               # entry point: discovery, advisory lock, summary
+│   ├── ingestion.py          # one file -> one table, in one transaction
+│   ├── utils.py              # config, connection retry, file hashing
+│   └── logger.py
 ├── streamlit/
 │   └── app.py                # dashboard on top of the marts
 └── dbt/                      # the dbt project
     ├── dbt_project.yml
     ├── profiles.yml          # reads credentials from env vars, safe to commit
-    ├── seeds/
-    ├── analyses/
-    ├── macros/
-    ├── tests/
+    ├── macros/               # delivery_days, generate_schema_name (+ _macros.yml)
+    ├── tests/                # 9 singular tests
     └── models/
-        ├── staging/
+        ├── staging/          # views, 1:1 with raw tables
         │   ├── _sources.yml
         │   ├── _staging.yml
         │   ├── stg_orders.sql
@@ -214,39 +229,44 @@ olist-dbt-analytics/
         │   ├── stg_payments.sql
         │   ├── stg_reviews.sql
         │   ├── stg_products.sql
+        │   ├── stg_product_category_translation.sql
         │   └── stg_sellers.sql
-        ├── intermediate/
+        ├── intermediate/     # views, one row per order
+        │   ├── _intermediate.yml
+        │   ├── int_order_items_agg.sql
         │   ├── int_order_payments_agg.sql
         │   └── int_order_reviews_dedup.sql
-        └── marts/
+        └── marts/            # tables
+            ├── _marts.yml
             ├── dim_customers.sql
             ├── dim_products.sql
             ├── dim_sellers.sql
             ├── fct_orders.sql
+            ├── fct_order_items.sql      # incremental
             ├── monthly_revenue.sql
             ├── delivery_delay_by_state.sql
-            └── top_sellers.sql
+            ├── top_sellers.sql
+            └── customer_repeat_rate.sql
 ```
 
 ---
 
 ## 9. How to Run
 
+Everything runs in Docker; see the [README](README.md#getting-started) for details.
+
 ```bash
-# 1. Install
-pip install dbt-postgres
+# 1. Configure credentials
+cp .env.example .env
 
-# 2. Load raw CSVs into a `raw` schema in Postgres
+# 2. Start everything: Postgres -> ETL -> dbt build -> Streamlit (http://localhost:8501)
+docker compose up --build
 
-# 3. Verify the connection
-dbt debug
+# 3. After changing models, re-run dbt without re-running the ETL
+docker compose run --rm --no-deps dbt dbt build
 
-# 4. Build and test everything
-dbt build
-
-# 5. View docs and lineage graph
-dbt docs generate
-dbt docs serve
+# 4. Docs and lineage graph at http://localhost:8080
+docker compose run --rm --no-deps -p 8080:8080 dbt sh -c "dbt docs generate && dbt docs serve --host 0.0.0.0 --port 8080 --no-browser"
 ```
 
 ---

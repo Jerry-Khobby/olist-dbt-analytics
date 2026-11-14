@@ -62,7 +62,7 @@ Headline KPIs (revenue, orders, average review, late %, repeat rate) sit above t
 |---|---|
 | `postgres` | Warehouse (Postgres 15) |
 | `etl` | One-off job that loads the raw CSVs into the `raw` schema (idempotent: unchanged files are skipped) |
-| `dbt` | One-off job that runs `dbt deps && dbt build` (models + tests) |
+| `dbt` | One-off job that runs `dbt build` (models + tests) |
 | `streamlit` | Dashboard on top of the marts, at <http://localhost:8501> |
 
 ## dbt lineage

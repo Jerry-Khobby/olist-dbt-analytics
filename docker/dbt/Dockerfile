@@ -17,5 +17,6 @@ WORKDIR /usr/app/dbt
 # dbt project, including profiles.yml (credentials come from env vars)
 COPY dbt/ .
 
-# Install packages, then run + test all models in dependency order
-CMD ["sh", "-c", "dbt deps && dbt build"]
+# Run + test all models in dependency order.
+# (If you add a packages.yml, change this to: sh -c "dbt deps && dbt build")
+CMD ["dbt", "build"]

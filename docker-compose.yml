@@ -49,7 +49,7 @@ services:
     networks:
       - olist-net
 
-  # One-shot job: runs `dbt deps && dbt build` once the raw data is loaded.
+  # One-shot job: runs `dbt build` (models + tests) once the raw data is loaded.
   dbt:
     build:
       context: .

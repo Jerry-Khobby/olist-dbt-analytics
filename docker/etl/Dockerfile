@@ -3,7 +3,8 @@ FROM python:3.12-slim
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
-RUN pip install --no-cache-dir pandas SQLAlchemy psycopg2-binary
+# The loader only talks to Postgres (COPY via psycopg2); no pandas needed
+RUN pip install --no-cache-dir "psycopg2-binary~=2.9.13"
 
 WORKDIR /app
 

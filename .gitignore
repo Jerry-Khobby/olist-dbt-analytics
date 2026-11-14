@@ -8,6 +8,11 @@ data/
 dbt/target/
 dbt/logs/
 dbt/dbt_packages/
+dbt/.user.yml
+
+# Editor settings
+.vscode/
+.idea/
 
 # Python
 __pycache__/
